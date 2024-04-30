@@ -4,7 +4,7 @@
  * 
  * Based on nanoid
  */
-class idz {
+trait idz {
     const CRC8_TABLE = [ 
         0x00, 0x07, 0x0E, 0x09, 0x1C, 0x1B, 0x12, 0x15, 0x38, 0x3F, 0x36, 0x31,
         0x24, 0x23, 0x2A, 0x2D, 0x70, 0x77, 0x7E, 0x79, 0x6C, 0x6B, 0x62, 0x65,
@@ -30,7 +30,7 @@ class idz {
         0xFA, 0xFD, 0xF4, 0xF3 
     ];
 
-    public function crc8_itu(string $value):int {
+    public static function crc8_itu(string $value):int {
         $crc = 0;
         for ($i = 0; $i < strlen($value); $i++) {
             $crc = self::CRC8_TABLE[($crc ^ ord($value[$i])) & 0xFF];
@@ -39,39 +39,40 @@ class idz {
         return $crc & 0xFF;
     }
 
-    const SEPARATOR = '-';
-    const ALPHABET = '23458ACDHLRTUXYZ';
-    /* should produce about 2.828100579E7 values */
-    const ALAPHABET_LENGTH = 16;
-    // (2 << (int)(log(ALAPHABET_LENGTH - 1) / M_LN2)) - 1;
-    const MASK = 31;
-    const MAX_TRY_TO_AVOID_REPETITION = 5;
+    /** 
+     * The alphabet used to generate the id.
+     */
+    const IDZ_ALPHABET = '23459ACDHLRTUXYZ';   
     /**
      * Generate an almost unique ID based on nanoid algorithm.
      * @param int $length The length of the string to generate.
      * @return string A random string.
      * @see https://github.com/ai/nanoid
      */
-    public function base (int $length = 13):string {
-        // (int) ceil(1.6 * BASE_MASK * $length / BASE_ALAPHABET_LENGTH);
-        $baseStep = ceil(1.6 * self::MASK * $length / self::ALAPHABET_LENGTH);
+    public static function base (int $length = 13):string {
+        $ALAPHABET_LENGTH = 16;
+         // (2 << (int)(log(ALAPHABET_LENGTH - 1) / M_LN2)) - 1;
+        $MASK = 31;
+        $MAX_TRY_TO_AVOID_REPETITION = 5;
+        // (int) ceil(1.6 * MASK * $length / ALAPHABET_LENGTH);
+        $baseStep = ceil(1.6 * $MASK * $length / $ALAPHABET_LENGTH);
         $str = '';
         $i = 0;
         $repeatLimit = 0;
         while (true) {
             $bytes = unpack('C*', random_bytes($baseStep));
             foreach ($bytes as $byte) {
-                $byte &= self::MASK;
-                if ($byte >= self::ALAPHABET_LENGTH) { continue; }
+                $byte &= $MASK;
+                if ($byte >= $ALAPHABET_LENGTH) { continue; }
                 if ($i > 0) {
-                    if ($str[$i - 1] === self::ALPHABET[$byte] 
-                            && $repeatLimit < self::MAX_TRY_TO_AVOID_REPETITION) {
+                    if ($str[$i - 1] === self::IDZ_ALPHABET[$byte] 
+                            && $repeatLimit < $MAX_TRY_TO_AVOID_REPETITION) {
                         $repeatLimit++;
                         continue;
                     }
                 }
                 $repeatLimit = 0;
-                $str .= self::ALPHABET[$byte];
+                $str .= self::IDZ_ALPHABET[$byte];
                 $i++;
                 if ($i === $length) {
                     return $str;
@@ -81,23 +82,76 @@ class idz {
     }
 
     /**
-     * Generate an id
+     * Generate a random id with cheksum.
+     * Length is the total length of chars including checksum, a char is 4 bits
+     * so the available space is $(length - 2) * 4 bits (2 chars for the checksum).
+     * For a 64 bits id, length is 16, as PHP has troubles with 64 bits integers
+     * (it seems that is ok since php7 but not sure), use max of 15 chars.
+     * Going over 16 chars would be supported but conversion to int would not
+     * work.
      * @param int $length The length of the id including the checksum.
      * @return string An id reference.
      */
-    public function get (int $length = 15):string {
-        $base = $this->base($length - 2);
-        $crc = $this->crc8_itu($base);
-        $base .= self::ALPHABET[($crc >> 4) & 0xF] . self::ALPHABET[$crc & 0xF];
+    public static function get (int $length = 15):string {
+        $base = self::base($length - 2);
+        $crc = self::crc8_itu($base);
+        $base .= self::IDZ_ALPHABET[($crc >> 4) & 0xF] . self::IDZ_ALPHABET[$crc & 0xF];
         $str = '';
         for ($i = 0; $i < strlen($base); $i++) {
             $str .= $base[$i];
-            if (($i + 1) % 3 === 0 && $i > 0 && $i < strlen($base) - 1) {
-                $str .= self::SEPARATOR;
-            }
         }
-       
         return $str;
+    }
+
+    /**
+     * Convert an id (from a database for example) to a reference. It adds
+     * the checksum.
+     * @param int $id 
+     * @return string 
+     */
+    public static function fromint (int $id):string {
+        $ref = self::toref($id);
+        $crc = self::crc8_itu($ref);
+        $ref .= self::IDZ_ALPHABET[($crc >> 4) & 0xF] . self::IDZ_ALPHABET[$crc & 0xF];
+        return $ref;
+    }
+
+    /**
+     * Convert a reference to an id without the checksum.
+     * @param string $ref 
+     * @return int 
+     */
+    public static function tointid (string $ref):int {
+        return self::toint(substr($ref, 0, strlen($ref) - 2));
+    }
+
+    /**
+     * Convert a reference to an id with checksum (to store the id in database for example)
+     * @param string $ref 
+     * @return int 
+     */
+    public static function toint(string $ref):int {
+        $bin = 0;
+        $ref = self::unformat($ref);
+        for($i = 0; $i < strlen($ref); $i++) {
+            $bin <<= 4;
+            $bin |= strpos(self::IDZ_ALPHABET, $ref[$i]);
+        }
+        return intval($bin);
+    }
+
+    /**
+     * Convert an id with checksum to a reference.
+     * @param int $id 
+     * @return string 
+     */
+    public static function toref (int $id):string {
+        $ref = '';
+        while ($id > 0) {
+            $ref = self::IDZ_ALPHABET[$id & 0xF] . $ref;
+            $id >>= 4;
+        }
+        return $ref;
     }
 
     /**
@@ -105,12 +159,45 @@ class idz {
      * @param string $ref A reference to check.
      * @return bool False if the reference is invalid.
      */
-    public function check (string $ref):bool {
-        $ref = strtoupper($ref);
-        $ref = str_replace(self::SEPARATOR, '', $ref);
+    public static function check (string $ref):bool {
+        $ref = self::unformat($ref);
+        $crc = self::crc8_itu(substr($ref, 0, strlen($ref) - 2));
+        return self::IDZ_ALPHABET[($crc >> 4) & 0xF] === $ref[strlen($ref) - 2] 
+            && self::IDZ_ALPHABET[$crc & 0xF] === $ref[strlen($ref) - 1];
+    }
 
-        $crc = $this->crc8_itu(substr($ref, 0, strlen($ref) - 2));
-        return self::ALPHABET[($crc >> 4) & 0xF] === $ref[strlen($ref) - 2] 
-            && self::ALPHABET[$crc & 0xF] === $ref[strlen($ref) - 1];
+    /**
+     * Format a reference with a separator and group of characters.
+     * @param string $ref Reference
+     * @param string $separator A separator (any char not in the alphabet)
+     * @param int $group Number of char to group together.
+     * @return string 
+     */
+    public static function format (string $ref, $separator = '-', $group = 3):string {
+        $ref = self::unformat($ref);
+        $str = '';
+        for ($i = 0; $i < strlen($ref); $i++) {
+            if ($i % $group === 0 && $i > 0 && $i < strlen($ref)){
+                $str .= $separator;
+            }
+            $str .= $ref[$i];
+        }
+        return $str;
+    }
+
+    /**
+     * Remove any chars not part of the alphabet.
+     * @param string $ref A reference
+     * @return string Reference made only of the alphabet.
+     */
+    public static function unformat (string $ref):string {
+        $ALAPHABET_LENGTH = 16;
+        $ref = strtoupper($ref);
+        $str = '';
+        for ($i = 0; $i < strlen($ref); $i++) {
+            if (strpos($ALAPHABET_LENGTH, $ref[$i]) !== false) { continue; }
+            $str .= $ref[$i];
+        }
+        return $str;
     }
 }
