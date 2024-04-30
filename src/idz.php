@@ -159,7 +159,10 @@ trait idz {
      * @param string $ref A reference to check.
      * @return bool False if the reference is invalid.
      */
-    public static function check (string $ref):bool {
+    public static function check (string|int $ref):bool {
+        if (is_int($ref)) {
+            return self::check(self::toref($ref));
+        }
         $ref = self::unformat($ref);
         $crc = self::idz_crc8_itu(substr($ref, 0, strlen($ref) - 2));
         return self::IDZ_ALPHABET[($crc >> 4) & 0xF] === $ref[strlen($ref) - 2] 
