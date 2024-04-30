@@ -30,7 +30,7 @@ trait idz {
         0xFA, 0xFD, 0xF4, 0xF3 
     ];
 
-    public static function crc8_itu(string $value):int {
+    public static function idz_crc8_itu(string $value):int {
         $crc = 0;
         for ($i = 0; $i < strlen($value); $i++) {
             $crc = self::CRC8_TABLE[($crc ^ ord($value[$i])) & 0xFF];
@@ -49,7 +49,7 @@ trait idz {
      * @return string A random string.
      * @see https://github.com/ai/nanoid
      */
-    public static function base (int $length = 13):string {
+    public static function idz_base (int $length = 13):string {
         $ALAPHABET_LENGTH = 16;
          // (2 << (int)(log(ALAPHABET_LENGTH - 1) / M_LN2)) - 1;
         $MASK = 31;
@@ -92,9 +92,9 @@ trait idz {
      * @param int $length The length of the id including the checksum.
      * @return string An id reference.
      */
-    public static function get (int $length = 15):string {
-        $base = self::base($length - 2);
-        $crc = self::crc8_itu($base);
+    public static function generate (int $length = 15):string {
+        $base = self::idz_base($length - 2);
+        $crc = self::idz_crc8_itu($base);
         $base .= self::IDZ_ALPHABET[($crc >> 4) & 0xF] . self::IDZ_ALPHABET[$crc & 0xF];
         $str = '';
         for ($i = 0; $i < strlen($base); $i++) {
@@ -111,7 +111,7 @@ trait idz {
      */
     public static function fromint (int $id):string {
         $ref = self::toref($id);
-        $crc = self::crc8_itu($ref);
+        $crc = self::idz_crc8_itu($ref);
         $ref .= self::IDZ_ALPHABET[($crc >> 4) & 0xF] . self::IDZ_ALPHABET[$crc & 0xF];
         return $ref;
     }
@@ -161,7 +161,7 @@ trait idz {
      */
     public static function check (string $ref):bool {
         $ref = self::unformat($ref);
-        $crc = self::crc8_itu(substr($ref, 0, strlen($ref) - 2));
+        $crc = self::idz_crc8_itu(substr($ref, 0, strlen($ref) - 2));
         return self::IDZ_ALPHABET[($crc >> 4) & 0xF] === $ref[strlen($ref) - 2] 
             && self::IDZ_ALPHABET[$crc & 0xF] === $ref[strlen($ref) - 1];
     }

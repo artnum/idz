@@ -22,7 +22,7 @@ class MyUserClass {
     use idz;
     function create ($firstname, $lastname) {
         /* 44 bits long id */
-        $id = $this->get(9); /* for example 4XT3ACHCA */
+        $id = $this->generate(9); /* for example 4XT3ACHCA */
         $this->pdo->prepare('INSERT INTO usertable (id, lastname, firstname) VALUES(:id, :lastname, :firstname)');
         /* db id is int 12265547877 */
         $this->pdo->bindValue(':id', $this->toint($id), PDO::PARAM_INT);
