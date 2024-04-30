@@ -4,13 +4,13 @@ Provide human-readable ID with checksum. It avoids similar looking chars and
 add a cheksum (crc8) at the end. When using random generation, it tries to avoid
 having two same characters in a row.
 
-Random generator is inspired/comes from (nanoid)[https://github.com/ai/nanoid].
+Random generator is inspired/comes from [nanoid](https://github.com/ai/nanoid).
 
 It is a _trait_ with only static methods so it can be used to compose a class 
 and be used without any class instances.
 
 Use this to generate ID like customer ID that would be exchange on the phone. ID
-can be used in (Creditor Reference)[https://en.wikipedia.org/wiki/Creditor_Reference]
+can be used in [Creditor Reference](https://en.wikipedia.org/wiki/Creditor_Reference)
 for billing. Can be used for ticketing system or anything where the ID is exposed
 to a human and might be manipulated by human.
 
