@@ -194,11 +194,10 @@ trait idz {
      * @return string Reference made only of the alphabet.
      */
     public static function unformat (string $ref):string {
-        $ALAPHABET_LENGTH = 16;
         $ref = strtoupper($ref);
         $str = '';
         for ($i = 0; $i < strlen($ref); $i++) {
-            if (strpos($ALAPHABET_LENGTH, $ref[$i]) !== false) { continue; }
+            if (strpos(self::IDZ_ALPHABET, $ref[$i]) === false) { continue; }
             $str .= $ref[$i];
         }
         return $str;
