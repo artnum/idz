@@ -85,14 +85,10 @@ trait idz {
      * Generate a random id with cheksum.
      * Length is the total length of chars including checksum, a char is 4 bits
      * so the available space is $(length - 2) * 4 bits (2 chars for the checksum).
-     * For a 64 bits id, length is 16, as PHP has troubles with 64 bits integers
-     * (it seems that is ok since php7 but not sure), use max of 15 chars.
-     * Going over 16 chars would be supported but conversion to int would not
-     * work.
      * @param int $length The length of the id including the checksum.
      * @return string An id reference.
      */
-    public static function generate (int $length = 15):string {
+    public static function generate (int $length = 16):string {
         $base = self::idz_base($length - 2);
         $crc = self::idz_crc8_itu($base);
         $base .= self::IDZ_ALPHABET[($crc >> 4) & 0xF] . self::IDZ_ALPHABET[$crc & 0xF];
